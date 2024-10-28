@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Coin Flip Game</title>
     <style>
+        /* General Styling */
         body {
             display: flex;
             flex-direction: column;
@@ -12,17 +13,71 @@
             justify-content: center;
             height: 100vh;
             font-family: Arial, sans-serif;
-            background-color: #f0f0f0;
+            background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
+            color: #333;
         }
-        h1 { color: #333; }
+        h1 { color: #333; font-size: 2em; }
+        h2 { color: #444; }
         .hidden { display: none; }
-        .result { font-size: 24px; }
-        .leaderboard { margin-top: 20px; }
+        .result { font-size: 24px; font-weight: bold; margin-top: 10px; color: #222; }
+        button { 
+            padding: 10px 20px; 
+            margin: 5px; 
+            background-color: #4CAF50; 
+            color: white; 
+            border: none; 
+            border-radius: 5px; 
+            cursor: pointer; 
+            transition: all 0.3s;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .leaderboard {
+            margin-top: 20px;
+            background-color: #ffffffcc;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0px 4px 8px rgba(0,0,0,0.1);
+        }
+        #coin {
+            width: 100px;
+            height: 100px;
+            margin-top: 20px;
+            perspective: 1000px;
+        }
+        #coinFlip {
+            width: 100px;
+            height: 100px;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 1s;
+        }
+        #coinFlip .side {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            backface-visibility: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2em;
+            font-weight: bold;
+            color: white;
+            border-radius: 50%;
+        }
+        #heads {
+            background-color: #3498db;
+        }
+        #tails {
+            background-color: #e74c3c;
+            transform: rotateY(180deg);
+        }
     </style>
 </head>
 <body>
     <h1>Coin Flip Game</h1>
-    <div id="loginForm" class="hidden">
+    <div id="loginForm">
         <h2>Login</h2>
         <input type="password" id="loginPassword" placeholder="Enter Password">
         <button id="loginButton">Login</button>
@@ -33,13 +88,19 @@
         <h2>Admin Panel</h2>
         <button id="startBettingButton">Start Betting</button>
         <button id="flipCoinButton" class="hidden">Flip Coin</button>
+        <div id="coin" class="hidden">
+            <div id="coinFlip">
+                <div class="side" id="heads">H</div>
+                <div class="side" id="tails">T</div>
+            </div>
+        </div>
         <p id="coinResult" class="result"></p>
     </div>
     
     <div id="playerPanel" class="hidden">
         <h2>Player Panel</h2>
-        <button id="betHeadsButton">Bet Heads</button>
-        <button id="betTailsButton">Bet Tails</button>
+        <button id="betHeadsButton" class="hidden">Bet Heads</button>
+        <button id="betTailsButton" class="hidden">Bet Tails</button>
         <p id="betMessage" class="result"></p>
     </div>
 
@@ -49,8 +110,8 @@
     </div>
 
     <script>
-        const adminPassword = "admin123"; // Admin password
-        const playerPassword = "player123"; // Player password
+        const adminPassword = "admin123";
+        const playerPassword = "player123";
 
         let isAdmin = false;
         let isPlayer = false;
@@ -80,13 +141,7 @@
         function showPlayerPanel() {
             document.getElementById("loginForm").classList.add("hidden");
             document.getElementById("playerPanel").classList.remove("hidden");
-            if (bettingActive) {
-                document.getElementById("betHeadsButton").disabled = false;
-                document.getElementById("betTailsButton").disabled = false;
-            } else {
-                document.getElementById("betHeadsButton").disabled = true;
-                document.getElementById("betTailsButton").disabled = true;
-            }
+            updateBettingButtons();
         }
 
         document.getElementById("startBettingButton").addEventListener("click", () => {
@@ -94,6 +149,7 @@
             document.getElementById("startBettingButton").classList.add("hidden");
             document.getElementById("flipCoinButton").classList.remove("hidden");
             document.getElementById("betMessage").innerText = "Players can now place their bets!";
+            updateBettingButtons();
         });
 
         document.getElementById("betHeadsButton").addEventListener("click", () => placeBet("Heads"));
@@ -103,6 +159,7 @@
             if (!bettingActive) return;
             players.push(bet);
             document.getElementById("betMessage").innerText = `You bet on: ${bet}`;
+            updateBettingButtons();
         }
 
         document.getElementById("flipCoinButton").addEventListener("click", () => {
@@ -111,10 +168,23 @@
 
         function flipCoin() {
             const coinFlip = Math.random() < 0.5 ? "Heads" : "Tails";
-            document.getElementById("coinResult").innerText = `Coin flipped: ${coinFlip}`;
-            determineWinners(coinFlip);
-            bettingActive = false; // Disable further betting
-            updateLeaderboard();
+            const coinElement = document.getElementById("coinFlip");
+            document.getElementById("coin").classList.remove("hidden");
+
+            // Animation Logic
+            if (coinFlip === "Heads") {
+                coinElement.style.transform = "rotateY(0deg)";
+            } else {
+                coinElement.style.transform = "rotateY(180deg)";
+            }
+
+            setTimeout(() => {
+                document.getElementById("coinResult").innerText = `Coin flipped: ${coinFlip}`;
+                determineWinners(coinFlip);
+                bettingActive = false;
+                updateBettingButtons();
+                updateLeaderboard();
+            }, 1000); // Wait for animation to finish
         }
 
         function determineWinners(coinFlip) {
@@ -124,13 +194,23 @@
 
         function updateLeaderboard() {
             const leaderboardList = document.getElementById("leaderboardList");
-            leaderboardList.innerHTML = ""; // Clear previous leaderboard
+            leaderboardList.innerHTML = "";
             winners.forEach(winner => {
                 const li = document.createElement("li");
                 li.textContent = winner;
                 leaderboardList.appendChild(li);
             });
             document.getElementById("leaderboard").classList.remove("hidden");
+        }
+
+        function updateBettingButtons() {
+            if (isPlayer && bettingActive) {
+                document.getElementById("betHeadsButton").classList.remove("hidden");
+                document.getElementById("betTailsButton").classList.remove("hidden");
+            } else {
+                document.getElementById("betHeadsButton").classList.add("hidden");
+                document.getElementById("betTailsButton").classList.add("hidden");
+            }
         }
     </script>
 </body>

@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Coin Flip Betting Game</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+        }
+        #coin {
+            width: 200px;
+            height: 200px;
+            background-image: url('heads.jpg');
+            background-size: cover;
+            border-radius: 50%;
+            transition: transform 1s;
+            margin-bottom: 20px;
+        }
+        #result {
+            font-size: 24px;
+            margin-top: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        #status, #timer {
+            margin-top: 20px;
+            font-size: 18px;
+            color: red;
+        }
+        #adminFlip {
+            display: none; /* Initially hide the admin flip button */
+        }
+    </style>
+</head>
+<body>
+    <div id="coin"></div>
+    <div id="roundInfo"></div>
+    <button id="headsBtn" onclick="placeBet('heads')">Bet on Heads</button>
+    <button id="tailsBtn" onclick="placeBet('tails')">Bet on Tails</button>
+    <button id="adminFlip" onclick="flipCoin()">Flip Coin (Admin Only)</button>
+    <p id="result"></p>
+    <p id="status"></p>
+    <p id="timer"></p>
+
+    <script>
+        const ADMIN_PASSWORD = "Manuja2007"; // Set your admin password here
+        const PLAYER_PASSWORD = "BongBong"; // Set your player password here
+        let isAdmin = false; // Track if the user is admin
+        let isPlayer = false; // Track if the user is a player
+        let userBet = null;
+        let isBettingAllowed = true; // Indicates if the user can still bet
+        let timer;
+        const bettingTime = 10; // 10 seconds for betting
+
+        // Authentication function
+        function authenticate() {
+            const role = prompt("Are you an admin or a player? (type 'admin' or 'player')");
+            let password;
+
+            if (role === 'admin') {
+                password = prompt("Enter admin password:");
+                if (password === ADMIN_PASSWORD) {
+                    isAdmin = true;
+                    alert("Login successful! You are now the admin.");
+                    startBetting(); // Start the game after successful login
+                } else {
+                    alert("Incorrect password! Access denied.");
+                    document.body.innerHTML = "<h1>Access Denied</h1>"; // Inform access denied
+                }
+            } else if (role === 'player') {
+                password = prompt("Enter player password:");
+                if (password === PLAYER_PASSWORD) {
+                    isPlayer = true;
+                    alert("Login successful! You can now place bets.");
+                    startBetting(); // Start betting for player
+                } else {
+                    alert("Incorrect password! Access denied.");
+                    document.body.innerHTML = "<h1>Access Denied</h1>"; // Inform access denied
+                }
+            } else {
+                alert("Invalid role! Please refresh the page.");
+            }
+        }
+
+        function startBetting() {
+            userBet = null; // Reset user bet
+            document.getElementById('status').innerText = 'Place your bet! You have 10 seconds.';
+            document.getElementById('headsBtn').disabled = false;
+            document.getElementById('tailsBtn').disabled = false;
+
+            if (isAdmin) {
+                document.getElementById('adminFlip').style.display = 'block'; // Show admin flip button
+                document.getElementById('adminFlip').disabled = true; // Disable admin flip until betting ends
+            } else {
+                document.getElementById('adminFlip').style.display = 'none'; // Hide admin flip button for players
+            }
+
+            startTimer(bettingTime);
+        }
+
+        function startTimer(seconds) {
+            let countdown = seconds;
+            const timerDisplay = document.getElementById('timer');
+            timerDisplay.innerText = `Time left: ${countdown} seconds`;
+
+            timer = setInterval(() => {
+                countdown--;
+                timerDisplay.innerText = `Time left: ${countdown} seconds`;
+
+                if (countdown <= 0) {
+                    clearInterval(timer);
+                    timerDisplay.innerText = "Time's up!";
+                    isBettingAllowed = false; // Disable betting after time is up
+                    document.getElementById('headsBtn').disabled = true;
+                    document.getElementById('tailsBtn').disabled = true;
+                    if (isAdmin) {
+                        document.getElementById('adminFlip').disabled = false; // Enable admin flip button
+                    }
+                }
+            }, 1000);
+        }
+
+        function placeBet(bet) {
+            if (!isBettingAllowed) {
+                document.getElementById('status').innerText = 'Betting time is over.';
+                return;
+            }
+
+            userBet = bet;
+            document.getElementById('status').innerText = `You bet on ${bet}.`;
+        }
+
+        function flipCoin() {
+            if (!userBet) {
+                document.getElementById('status').innerText = 'You need to place a bet first!';
+                return;
+            }
+
+            const coin = document.getElementById('coin');
+            const resultText = document.getElementById('result');
+            coin.style.transform = 'rotateY(1800deg)';
+
+            setTimeout(() => {
+                const isHeads = Math.random() < 0.5;
+                const result = isHeads ? 'Heads' : 'Tails';
+                resultText.innerText = result;
+                coin.style.backgroundImage = isHeads 
+                    ? "url('heads.jpg')" 
+                    : "url('tails.jpg')";
+
+                checkResult(isHeads);
+                clearInterval(timer); // Stop the timer
+                document.getElementById('adminFlip').disabled = true; // Disable flip button after flip
+                setTimeout(() => {
+                    // Start a new round only if the user won
+                    if (isBettingAllowed) {
+                        startBetting();
+                    }
+                }, 2000); // Wait for 2 seconds before starting the next betting round
+                coin.style.transform = 'rotateY(0deg)';
+            }, 1000);
+        }
+
+        function checkResult(isHeads) {
+            if ((isHeads && userBet === 'heads') || (!isHeads && userBet === 'tails')) {
+                document.getElementById('status').innerText += ' You Win!';
+            } else {
+                document.getElementById('status').innerText += ' You Lose!';
+                isBettingAllowed = false; // Disable further betting for this user
+                document.getElementById('headsBtn').disabled = true;
+                document.getElementById('tailsBtn').disabled = true;
+            }
+        }
+
+        // Start the authentication process
+        authenticate();
+    </script>
+</body>
+</html>
